@@ -1,21 +1,32 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "NS Deer Paradise | Every Deer Hunter's Dream",
+  title: "NS Deer Paradise | The Ultimate Northern Nova Scotia Deer Hunting Platform",
   description:
-    "The ultimate free platform for Nova Scotia deer hunters. Seasons, maps, journals, trail cams, weather, community — register and enter paradise.",
+    "World-class free platform for Nova Scotia deer hunters. Seasons, accurate trail cam reader, maps, journals, weather, community. Register and enter paradise.",
   keywords: [
     "Nova Scotia",
     "deer hunting",
     "whitetail",
     "northern Nova Scotia",
-    "hunting journal",
-    "trail camera",
+    "trail camera AI",
     "Crown land",
+    "hunting journal",
   ],
 };
 
@@ -25,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} bg-stone-950 text-stone-100 antialiased`}>
+    <html lang="en" className={`${dmSans.variable} ${instrumentSerif.variable}`}>
+      <body className="font-sans bg-[#07090a] text-[#f4efe6] antialiased">
         {children}
       </body>
     </html>
