@@ -21,13 +21,15 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  huntLogs      HuntLog[]
-  trailCams     TrailCamPhoto[]
-  waypoints     Waypoint[]
-  groups        GroupMember[]
-  camJobs       TrailCamJob[]
+  accounts           Account[]
+  sessions           Session[]
+  huntLogs           HuntLog[]
+  trailCams          TrailCamPhoto[]
+  waypoints          Waypoint[]
+  groups             GroupMember[]
+  camJobs            TrailCamJob[]
+  emergencyContacts  EmergencyContact[]
+  lostAlerts         LostAlert[]
 
   @@map("users")
 }
@@ -71,7 +73,6 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// Core hunting models
 model HuntLog {
   id          String   @id @default(cuid())
   userId      String
@@ -98,13 +99,11 @@ model HuntLog {
   @@map("hunt_logs")
 }
 
-// ===== TRAIL CAM MASS DUMP + ACCURATE READER =====
-
 model TrailCamJob {
   id            String   @id @default(cuid())
   userId        String
-  name          String?  // e.g. "North Ridge SD card dump Oct 2026"
-  status        String   @default("pending") // pending, uploading, analyzing, complete, failed
+  name          String?
+  status        String   @default("pending")
   totalFiles    Int      @default(0)
   processed     Int      @default(0)
   animalsFound  Int      @default(0)
@@ -130,35 +129,28 @@ model TrailCamPhoto {
   imageUrl        String
   thumbnailUrl    String?
   originalName    String?
-
-  // EXIF / camera metadata (extracted accurately)
   takenAt         DateTime?
   cameraMake      String?
   cameraModel     String?
   latitude        Float?
   longitude       Float?
-  locationLabel   String?  // user or auto label e.g. "North Ridge Cam 3"
-
-  // Detection results (MegaDetector-style accuracy goal)
+  locationLabel   String?
   hasAnimal       Boolean  @default(false)
   hasPerson       Boolean  @default(false)
   hasVehicle      Boolean  @default(false)
   isEmpty         Boolean  @default(false)
-  animalConfidence Float?  // 0-1
-  species         String?  // "deer", "bear", "coyote", "unknown", etc.
+  animalConfidence Float?
+  species         String?
   speciesConfidence Float?
   isDeer          Boolean  @default(false)
   isBuck          Boolean  @default(false)
   isDoe           Boolean  @default(false)
-  antlerPoints    Int?     // estimated if buck
-  detectionNotes  String?  // raw model notes or bounding boxes summary
-
-  // User overrides (human always wins)
+  antlerPoints    Int?
+  detectionNotes  String?
   userTags        String[]
   userNotes       String?  @db.Text
   isPublic        Boolean  @default(false)
   isFavorite      Boolean  @default(false)
-
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -176,15 +168,57 @@ model Waypoint {
   id          String   @id @default(cuid())
   userId      String
   name        String
-  type        String   // stand, cam, scrape, food, parking, etc.
+  type        String   // stand, cam, scrape, food, parking, truck, home, etc.
   latitude    Float
   longitude   Float
   notes       String?
+  isHomeBase  Boolean  @default(false) // primary "get me home" point (truck / camp / road)
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("waypoints")
+}
+
+// ===== I AM LOST SAFETY =====
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  email     String
+  phone     String?
+  relation  String?  // spouse, buddy, parent, etc.
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("emergency_contacts")
+}
+
+model LostAlert {
+  id              String   @id @default(cuid())
+  userId          String
+  latitude        Float
+  longitude       Float
+  accuracyMetres  Float?
+  backBearingDeg  Float?   // heading toward home base
+  backBearingLabel String? // e.g. "247.3° WSW"
+  distanceToHomeM Float?
+  homeWaypointId  String?
+  homeWaypointName String?
+  waypointsJson   String?  @db.Text // snapshot of all waypoints at alert time
+  mapsUrl         String?
+  message         String?  @db.Text
+  emailsSentTo    String[] // list of addresses notified
+  status          String   @default("sent") // sent, acknowledged, resolved
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("lost_alerts")
 }
 
 model Group {
