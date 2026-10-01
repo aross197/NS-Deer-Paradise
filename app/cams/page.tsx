@@ -1,128 +1,279 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback, useRef, useState } from "react";
+import {
+  analyzeTrailCamFile,
+  filterAnalyses,
+  loadDetector,
+  type GalleryFilter,
+  type TrailCamAnalysis,
+} from "@/lib/trailcam-ai";
 
 export default function TrailCamsPage() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [items, setItems] = useState<TrailCamAnalysis[]>([]);
+  const [filter, setFilter] = useState<GalleryFilter>("all");
+  const [status, setStatus] = useState<string | null>(null);
+  const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [running, setRunning] = useState(false);
+  const [modelReady, setModelReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const runFiles = useCallback(async (files: FileList | File[]) => {
+    const list = Array.from(files).filter((f) =>
+      /image\/(jpeg|jpg|png|webp|gif)/i.test(f.type) ||
+      /\.(jpe?g|png|webp|gif)$/i.test(f.name)
+    );
+    if (list.length === 0) {
+      setError("No supported images found (JPG, PNG, WebP)." );
+      return;
+    }
+
+    setError(null);
+    setRunning(true);
+    setProgress({ done: 0, total: list.length });
+    setStatus("Loading detection model (TensorFlow.js COCO-SSD)…");
+
+    try {
+      const model = await loadDetector();
+      setModelReady(true);
+      setStatus(`Analyzing ${list.length} image(s)…`);
+
+      const results: TrailCamAnalysis[] = [];
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        try {
+          const analysis = await analyzeTrailCamFile(file, model);
+          results.push(analysis);
+        } catch (e) {
+          console.error(file.name, e);
+        }
+        setProgress({ done: i + 1, total: list.length });
+        setStatus(`Analyzed ${i + 1} / ${list.length}`);
+      }
+
+      setItems((prev) => [...results, ...prev]);
+      const animals = results.filter((r) => r.hasAnimal).length;
+      const empty = results.filter((r) => r.isEmpty).length;
+      setStatus(
+        `Done. ${results.length} images · ${animals} with animals · ${empty} empty`
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Failed to load AI model. Check network (model downloads once)."
+      );
+      setStatus(null);
+    } finally {
+      setRunning(false);
+    }
+  }, []);
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files?.length) runFiles(e.dataTransfer.files);
+  };
+
+  const visible = filterAnalyses(items, filter);
+  const stats = {
+    total: items.length,
+    animals: items.filter((i) => i.hasAnimal).length,
+    empty: items.filter((i) => i.isEmpty).length,
+    deer: items.filter((i) => i.likelyDeer).length,
+    people: items.filter((i) => i.hasPerson).length,
+  };
+
   return (
     <div className="min-h-screen bg-deep text-cream-100">
       <nav className="sticky top-0 z-20 border-b border-white/[0.04] glass-strong">
-        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/dashboard" className="font-serif text-lg tracking-wide text-cream-100">
-            NS Deer Paradise
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <Link href="/dashboard" className="font-serif text-lg">
+            BuckTracks
           </Link>
-          <div className="flex items-center gap-6 text-sm text-cream-300/60">
-            <Link href="/dashboard" className="hover:text-cream-100 transition">Dashboard</Link>
-            <Link href="/cams" className="text-amber-400 font-medium">Trail Cams</Link>
-            <Link href="#" className="hover:text-cream-100 transition">Journal</Link>
-            <Link href="#" className="hover:text-cream-100 transition">Maps</Link>
+          <div className="flex gap-4 text-sm text-cream-300/60">
+            <Link href="/weather" className="hover:text-cream-100">
+              Weather
+            </Link>
+            <Link href="/cams" className="text-amber-400 font-medium">
+              Trail Cams
+            </Link>
+            <Link href="/sos" className="text-red-400">
+              SOS
+            </Link>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <p className="text-xs uppercase tracking-[0.2em] text-amber-400/70 mb-3">Signature feature</p>
-          <h1 className="font-serif text-4xl md:text-5xl tracking-tight text-cream-50 mb-4">
-            Mass Dump Trail Cam Reader
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-24">
+        <div className="mb-8">
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-400/70 mb-2">
+            Trail cam AI
+          </p>
+          <h1 className="font-serif text-3xl md:text-4xl text-cream-50 mb-2">
+            Mass Dump Reader
           </h1>
-          <p className="text-cream-300/60 max-w-2xl text-lg leading-relaxed">
-            Dump an entire SD card. Accurate EXIF, animal detection, empty-frame filtering,
-            deer & buck tags with confidence — so you only look at what matters.
+          <p className="text-cream-300/55 max-w-2xl text-sm leading-relaxed">
+            Real on-device detection with TensorFlow.js (COCO-SSD). Finds animals, people, and
+            vehicles; flags empty frames; reads EXIF. Runs in your browser — photos stay on your
+            device.
           </p>
         </div>
 
-        {/* Upload zone */}
-        <section className="mb-16">
-          <div className="relative group rounded-3xl border border-dashed border-white/10 hover:border-amber-500/40 bg-gradient-to-b from-forest-900/80 to-forest-950/90 p-14 md:p-20 text-center transition-all duration-500 overflow-hidden">
-            <div className="absolute inset-0 bg-amber-400/[0.03] opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none" />
-            <div className="relative">
-              <div className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-2xl group-hover:scale-110 transition duration-500">
-                📷
+        <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={onDrop}
+          className="relative rounded-3xl border border-dashed border-white/10 hover:border-amber-500/40 bg-gradient-to-b from-forest-900/80 to-forest-950/90 p-10 md:p-16 text-center mb-8"
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png"
+            multiple
+            className="hidden"
+            onChange={(e) => e.target.files && runFiles(e.target.files)}
+          />
+          <p className="text-xl text-cream-50 mb-2">Drop trail cam photos</p>
+          <p className="text-sm text-cream-300/45 mb-6">or select many at once from your SD dump</p>
+          <button
+            type="button"
+            disabled={running}
+            onClick={() => inputRef.current?.click()}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {running ? "Analyzing…" : "Select photos"}
+          </button>
+          {running && progress.total > 0 && (
+            <div className="mt-6 max-w-md mx-auto">
+              <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 transition-all"
+                  style={{
+                    width: `${Math.round((progress.done / progress.total) * 100)}%`,
+                  }}
+                />
               </div>
-              <h2 className="text-xl font-medium text-cream-50 mb-2">Drop your trail cam photos here</h2>
-              <p className="text-cream-300/50 mb-8 max-w-md mx-auto text-sm leading-relaxed">
-                Drag & drop hundreds of images, or select a folder. JPG, PNG, HEIC supported.
-              </p>
-              <button className="btn-primary text-sm">Select photos or folder</button>
-              <p className="mt-5 text-xs text-cream-300/30">
-                Processing runs in the background. You can leave this page.
-              </p>
+              <p className="text-xs text-cream-300/50 mt-2">{status}</p>
             </div>
-          </div>
-        </section>
+          )}
+          {!running && status && (
+            <p className="mt-4 text-sm text-moss-400/90">{status}</p>
+          )}
+          {error && <p className="mt-4 text-sm text-red-300">{error}</p>}
+          {modelReady && !running && (
+            <p className="mt-3 text-xs text-cream-300/30">Model loaded in memory</p>
+          )}
+        </div>
 
-        {/* Pipeline */}
-        <section className="mb-16">
-          <h2 className="font-serif text-2xl text-cream-100 mb-8">How the accurate reader works</h2>
-          <div className="grid md:grid-cols-4 gap-4">
+        {items.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
-              { step: "01", title: "Mass Upload", desc: "Dump the whole card. Bulk files kept with original names." },
-              { step: "02", title: "EXIF Extraction", desc: "Accurate date, time, camera model, GPS from metadata." },
-              { step: "03", title: "Animal Detection", desc: "MegaDetector-class find animals, people, vehicles & empties." },
-              { step: "04", title: "Deer Intelligence", desc: "Deer / buck / doe tags, confidence scores, smart filters." },
-            ].map((item) => (
-              <div key={item.step} className="card-premium p-6">
-                <span className="text-xs font-medium text-amber-400/80 tracking-widest">{item.step}</span>
-                <h3 className="mt-3 font-medium text-cream-50 mb-2">{item.title}</h3>
-                <p className="text-sm text-cream-300/50 leading-relaxed">{item.desc}</p>
+              ["Total", stats.total],
+              ["Animals", stats.animals],
+              ["Likely deer/mammal", stats.deer],
+              ["Empty", stats.empty],
+            ].map(([label, n]) => (
+              <div key={String(label)} className="card-premium p-4 text-center">
+                <p className="text-2xl text-cream-50">{n}</p>
+                <p className="text-xs text-cream-300/40">{label}</p>
               </div>
             ))}
           </div>
-        </section>
+        )}
 
-        {/* Accuracy callout */}
-        <section className="mb-16 rounded-2xl border border-moss-500/25 bg-gradient-to-br from-moss-600/10 to-transparent p-8">
-          <h2 className="text-lg font-medium text-moss-400 mb-4">Built for accuracy, not hype</h2>
-          <ul className="space-y-3 text-sm text-cream-300/70 leading-relaxed">
-            <li>Primary detection inspired by Microsoft MegaDetector — the open-source standard used worldwide for camera-trap images.</li>
-            <li>Empty frames auto-flagged so you stop scrolling blank night shots.</li>
-            <li>Confidence scores shown. Human overrides always win.</li>
-            <li>EXIF first — timelines and weather stay correct while analysis runs.</li>
-            <li>Tuned for northern NS cams: day/night IR, typical resolution, whitetail, coyote, bear.</li>
-          </ul>
-        </section>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {(
+            [
+              ["all", "All"],
+              ["nonempty", "Non-empty"],
+              ["animals", "Animals"],
+              ["deer", "Deer hint"],
+              ["empty", "Empty only"],
+              ["people", "People"],
+            ] as [GalleryFilter, string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFilter(id)}
+              className={`px-3.5 py-1.5 rounded-full text-xs border transition ${
+                filter === id
+                  ? "border-amber-500/50 text-amber-300 bg-amber-500/10"
+                  : "border-white/10 text-cream-300/50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-        {/* Gallery empty state */}
-        <section className="mb-14">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-            <h2 className="font-serif text-2xl text-cream-100">Your gallery</h2>
-            <div className="flex flex-wrap gap-2">
-              {["All", "Deer only", "Bucks", "Does", "Empty filtered", "Favorites"].map((f) => (
-                <button
-                  key={f}
-                  className="px-3.5 py-1.5 rounded-full text-xs border border-white/10 text-cream-300/50 hover:border-amber-500/40 hover:text-amber-300 transition"
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
+        {visible.length === 0 ? (
+          <div className="rounded-2xl border border-white/[0.05] p-16 text-center text-cream-300/35 text-sm">
+            {items.length === 0
+              ? "Upload photos to run AI detection."
+              : "No images match this filter."}
           </div>
-          <div className="rounded-2xl border border-white/[0.05] bg-forest-950/60 p-20 text-center">
-            <p className="text-cream-300/40 text-lg mb-2">No photos yet</p>
-            <p className="text-cream-300/25 text-sm max-w-sm mx-auto">
-              Dump your first SD card above. The reader will sort animals from empties and surface the deer.
-            </p>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-sm uppercase tracking-widest text-cream-300/40 mb-4">Coming next</h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[
-              "Timeline by hour / day / moon phase",
-              "Same-buck matching across cameras",
-              "Activity heatmaps from cam times",
-              "Share album with hunting buddies",
-              "Export filtered sets",
-              "Link photos into Hunt Journal",
-            ].map((f) => (
-              <div
-                key={f}
-                className="px-4 py-3 rounded-xl border border-dashed border-white/[0.06] text-cream-300/35 text-sm"
-              >
-                {f}
-              </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visible.map((item) => (
+              <article key={item.id} className="card-premium overflow-hidden">
+                <div className="aspect-[4/3] bg-black/40 relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.objectUrl}
+                    alt={item.fileName}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                    {item.isEmpty && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-black/70 text-cream-300/70">
+                        Empty
+                      </span>
+                    )}
+                    {item.hasAnimal && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-moss-600/90 text-white">
+                        Animal {(item.maxConfidence * 100).toFixed(0)}%
+                      </span>
+                    )}
+                    {item.likelyDeer && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/90 text-stone-950">
+                        Deer hint
+                      </span>
+                    )}
+                    {item.hasPerson && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-600/90 text-white">
+                        Person
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="p-3">
+                  <p className="text-sm text-cream-100 truncate">{item.fileName}</p>
+                  <p className="text-xs text-cream-300/45 mt-1">
+                    {item.speciesHint ?? "—"}
+                    {item.exif.takenAt
+                      ? ` · ${new Date(item.exif.takenAt).toLocaleString()}`
+                      : ""}
+                  </p>
+                  {(item.exif.make || item.exif.model) && (
+                    <p className="text-[10px] text-cream-300/30 mt-0.5">
+                      {[item.exif.make, item.exif.model].filter(Boolean).join(" ")}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-cream-300/25 mt-2 line-clamp-2">{item.notes}</p>
+                </div>
+              </article>
             ))}
           </div>
-        </section>
+        )}
+
+        <p className="mt-10 text-xs text-cream-300/25 leading-relaxed max-w-2xl">
+          Engine: TensorFlow.js COCO-SSD (lite MobileNet). Maps to MegaDetector-style classes
+          (animal / person / vehicle / empty). Species ID for whitetail is a hint, not a guarantee —
+          for research-grade MD, connect a PytorchWildlife MegaDetector service later. Photos never
+          leave your browser in this mode.
+        </p>
       </main>
     </div>
   );
