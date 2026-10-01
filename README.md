@@ -4,9 +4,11 @@
 
 Register for a free account → get a confirmation email → log into paradise.
 
+**Repo:** https://github.com/aross197/NS-Deer-Paradise
+
 ## Vision
 
-This is the all-in-one platform for white-tailed deer hunters in Nova Scotia (especially the north). No more jumping between apps, PDFs, Facebook groups, and weather sites. One place that does **everything**:
+This is the all-in-one platform for white-tailed deer hunters in Nova Scotia (especially the north). No more jumping between apps, PDFs, Facebook groups, and weather sites. One place that does **everything**.
 
 ### Core Features (Planned & In Progress)
 
@@ -14,98 +16,63 @@ This is the all-in-one platform for white-tailed deer hunters in Nova Scotia (es
   Secure registration, confirmation email, instant login to your personalized dashboard.
 
 - **Nova Scotia Deer Season Hub**  
-  Live 2026–2027 dates, zones (101–112), antlerless draws, bag limits, youth seasons, Sunday hunting rules, official links. Always up-to-date.
+  Live 2026–2027 dates, zones (101–112), antlerless draws, bag limits, youth seasons, Sunday hunting rules, official links.
 
 - **Interactive Maps**  
-  Crown land, public access, private land notes, waypoints, stand locations, trail camera pins, scent cone / wind tools, offline-capable layers focused on NS.
+  Crown land (official NS open data), public access, waypoints, stand locations, trail camera pins, wind tools.
 
 - **Hunt Journal & Logbook**  
-  Log every hunt: weather, moon phase, wind, sightings, harvests, photos, GPS tracks. Searchable history and stats.
+  Log every hunt: weather, moon phase, wind, sightings, harvests, photos, GPS tracks.
 
 - **Trail Camera Gallery**  
-  Upload, tag, and organize cam pics. Share with trusted friends or keep private. AI-assisted buck ID (future).
+  Upload, tag, and organize cam pics. Share with trusted friends or keep private.
 
 - **Weather + Solunar + Activity Forecast**  
-  Hyper-local northern NS weather, barometric pressure, solunar tables, and a simple “deer activity score” tailored to Maritime conditions.
+  Hyper-local northern NS weather (Open-Meteo + MSC), barometric pressure, solunar tables, simple deer activity score.
 
 - **Community & Club**  
-  Private groups for your hunting buddies, public forums for tips, “who’s seeing what” reports (anonymized), gear swaps, and mentorship for youth hunters.
+  Private groups for your hunting buddies, tips, gear swaps, mentorship for youth hunters.
 
-- **Gear & Checklist**  
-  Season-ready packing lists, gear reviews from real NS hunters, licensing reminders, safety course links.
+- **Gear, Venison Kitchen, Trophy Room, Safety Checker**
 
-- **Venison Kitchen**  
-  Recipes, butchering tips, freezer inventory tracker.
+## Tech Stack
 
-- **Trophy & Scoring**  
-  Photo upload + basic scoring helper, personal trophy room.
+- Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- Auth.js + Prisma + PostgreSQL
+- Resend for transactional email
+- Leaflet / react-leaflet + NS Crown Land GeoJSON / ArcGIS layers
+- Open-Meteo, solunar.org, sunrisesunset.io for weather & celestial data
 
-- **Safety & Compliance**  
-  Hunter education reminders, regulations snapshot, “am I legal today?” checker by zone and weapon.
+## Docs
 
-## Tech Stack (Starting Point)
+- [AUTH_AND_EMAIL.md](docs/AUTH_AND_EMAIL.md) — registration + confirmation flow
+- [APIS_AND_DATA_SOURCES.md](docs/APIS_AND_DATA_SOURCES.md) — free weather, solunar, moon, Crown land, and mapping sources researched for this project
 
-- **Frontend / Full-stack**: Next.js 15 (App Router) + TypeScript + Tailwind CSS
-- **Auth**: Auth.js (NextAuth) with email magic link / confirmation flow
-- **Database**: Prisma + PostgreSQL (ready for Supabase or Neon)
-- **Email**: Resend (or similar transactional provider)
-- **Maps**: Leaflet / Mapbox GL (NS-focused layers)
-- **Storage**: S3-compatible for photos
-- **Deployment**: Vercel (easy) or self-hosted
-
-## Getting Started (Local Development)
+## Getting Started
 
 ```bash
 git clone https://github.com/aross197/NS-Deer-Paradise.git
 cd NS-Deer-Paradise
 npm install
-cp .env.example .env.local   # fill in secrets
-npx prisma generate
-npx prisma db push
+cp .env.example .env.local
+npx prisma generate && npx prisma db push
 npm run dev
 ```
 
-Open http://localhost:3000
+## Current Roadmap Status
 
-## Project Structure (Planned)
-
-```
-/
-├── app/                  # Next.js App Router
-│   ├── (auth)/           # login, register, confirm
-│   ├── dashboard/        # logged-in paradise
-│   ├── seasons/          # NS regulations & calendar
-│   ├── maps/             # interactive hunting maps
-│   ├── journal/          # hunt logs
-│   ├── cams/             # trail camera gallery
-│   ├── community/        # forums & groups
-│   └── api/              # route handlers
-├── components/
-├── lib/                  # auth, db, email, maps helpers
-├── prisma/               # schema
-└── public/
-```
-
-## Roadmap
-
-1. ✅ Repo + vision + basic structure
-2. Auth system with email confirmation
-3. User dashboard (“Paradise”)
-4. NS Season data + calendar
+1. ✅ Repo + vision + basic structure + landing / register / login / dashboard
+2. ✅ 2026–2027 NS deer season data + helpers
+3. ✅ Research of free APIs & official NS Crown land open data
+4. ⏳ Auth system with real email confirmation (next priority)
 5. Hunt journal MVP
-6. Maps foundation
-7. Community basics
-8. Weather / solunar integration
-9. Photo uploads & gallery
-10. Polish, mobile PWA, offline support
-
-## Contributing
-
-This started as a passion project for northern Nova Scotia hunters and their friends. Pull requests, feature ideas, and real-world feedback are welcome. Keep it respectful, legal, and focused on ethical hunting.
+6. Weather + solunar components
+7. Maps with Crown land overlay
+8. Photo uploads, community, polish, PWA
 
 ## Legal & Safety
 
-Always follow current Nova Scotia Department of Natural Resources regulations. This site is a helper tool — not a substitute for the official summary of regulations or your hunter education certificate. Hunt safe, hunt ethical, respect landowners and wildlife.
+Always follow current Nova Scotia Department of Natural Resources regulations. This site is a helper tool — not a substitute for the official summary or your hunter education certificate. Hunt safe, hunt ethical, respect landowners and wildlife.
 
 ---
 
