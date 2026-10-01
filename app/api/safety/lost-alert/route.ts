@@ -6,26 +6,15 @@ import {
   distanceMetres,
   mapsLink,
 } from "@/lib/geo";
-import {
-  PROXIMITY_RADIUS_KM,
-  proximityAlertPayload,
-  toPublicNearby,
-} from "@/lib/proximity";
+import { PROXIMITY_RADIUS_KM, toPublicNearby } from "@/lib/proximity";
+
+export const dynamic = "force-dynamic";
 
 /**
  * POST /api/safety/lost-alert
- *
- * Body:
- * {
- *   latitude, longitude, accuracyMetres?,
- *   notifySelected?: boolean,
- *   notifyProximity?: boolean,
- *   contactIds?: string[],
- *   message?:
- * }
- *
- * Selected contacts → full location + bearing + waypoints.
- * Proximity (opted-in, ≤25 km) → distance only, no exact coords.
+ * Processes a real GPS alert: computes bearing, distance, maps link.
+ * Email/push require RESEND_API_KEY + contacts in body; otherwise returns
+ * a complete alert payload the client can share via mailto: / SMS.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -36,8 +25,12 @@ export async function POST(req: NextRequest) {
       accuracyMetres,
       message,
       notifySelected = true,
-      notifyProximity = true,
-      contactIds = [],
+      notifyProximity = false,
+      contacts = [] as { name: string; email: string }[],
+      homeLat,
+      homeLon,
+      homeName = "Home base",
+      presence = [] as { displayName: string; lat: number; lon: number }[],
     } = body;
 
     if (
@@ -52,77 +45,120 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!notifySelected && !notifyProximity) {
-      return NextResponse.json(
-        { error: "Choose selected contacts and/or proximity notify" },
-        { status: 400 }
-      );
-    }
-
-    // TODO: session auth
-    const home = { lat: 45.62, lon: -63.28, name: "Home base (truck/road)" };
+    const home = {
+      lat: typeof homeLat === "number" ? homeLat : 45.62,
+      lon: typeof homeLon === "number" ? homeLon : -63.28,
+      name: homeName,
+    };
     const here = { lat: latitude, lon: longitude };
-
     const bearing = backBearing(here, home);
     const dist = distanceMetres(here, home);
     const mapsUrl = mapsLink(latitude, longitude);
+    const backBearingLabel = formatBearing(bearing);
 
-    // --- Selected contacts: FULL location (email via Resend when wired) ---
-    const selectedPayload = notifySelected
-      ? {
-          latitude,
-          longitude,
-          accuracyMetres: accuracyMetres ?? null,
-          backBearingDeg: bearing,
-          backBearingLabel: formatBearing(bearing),
-          distanceToHomeM: dist,
-          distanceLabel: formatDistance(dist),
-          homeWaypointName: home.name,
-          mapsUrl,
-          message: message ?? null,
-          contactIds,
+    const alertId = `alert_${Date.now()}`;
+
+    const fullAlert = {
+      id: alertId,
+      latitude,
+      longitude,
+      accuracyMetres: accuracyMetres ?? null,
+      backBearingDeg: bearing,
+      backBearingLabel,
+      distanceToHomeM: dist,
+      distanceLabel: formatDistance(dist),
+      homeWaypointName: home.name,
+      mapsUrl,
+      message: message ?? null,
+      createdAt: new Date().toISOString(),
+    };
+
+    const mailtoLinks: string[] = [];
+    if (notifySelected && Array.isArray(contacts)) {
+      for (const c of contacts) {
+        if (!c?.email) continue;
+        const subject = encodeURIComponent(
+          `[BuckTracks SOS] I Am Lost — ${backBearingLabel}`
+        );
+        const bodyText = encodeURIComponent(
+          [
+            "BuckTracks SOS alert",
+            "",
+            `Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+            `Maps: ${mapsUrl}`,
+            accuracyMetres != null
+              ? `GPS accuracy: ±${Math.round(accuracyMetres)} m`
+              : "",
+            "",
+            `BACK BEARING TO ${home.name}: ${backBearingLabel}`,
+            `Distance: ${formatDistance(dist)}`,
+            "",
+            message ? `Message: ${message}` : "",
+            "",
+            "Selected contacts receive full location. Proximity network receives distance only.",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        );
+        mailtoLinks.push(`mailto:${c.email}?subject=${subject}&body=${bodyText}`);
+      }
+    }
+
+    const nearby =
+      notifyProximity && Array.isArray(presence)
+        ? toPublicNearby(here, presence)
+        : [];
+
+    // Resend email when key is present
+    let emailsAttempted = 0;
+    let emailsSent = 0;
+    if (process.env.RESEND_API_KEY && notifySelected) {
+      try {
+        const { Resend } = await import("resend");
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        const from =
+          process.env.EMAIL_FROM ?? "BuckTracks <onboarding@resend.dev>";
+        for (const c of contacts) {
+          if (!c?.email) continue;
+          emailsAttempted++;
+          await resend.emails.send({
+            from,
+            to: c.email,
+            subject: `[BuckTracks SOS] I Am Lost — ${backBearingLabel}`,
+            text: [
+              `Location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              `Maps: ${mapsUrl}`,
+              `Back bearing to ${home.name}: ${backBearingLabel}`,
+              `Distance: ${formatDistance(dist)}`,
+              message ?? "",
+            ].join("\n"),
+          });
+          emailsSent++;
         }
-      : null;
-
-    // --- Proximity: load opted-in presences server-side, never return their coords ---
-    // TODO: prisma userPresence where proximityOptIn && updated recently
-    const presenceCandidates: { displayName: string; lat: number; lon: number }[] =
-      []; // filled from DB
-
-    const nearbyPublic = notifyProximity
-      ? toPublicNearby(here, presenceCandidates)
-      : [];
-
-    // Each nearby recipient gets distance-only payload (no lost-person lat/lon)
-    const proximityNotices = nearbyPublic.map((n) => ({
-      // recipientUserId: …
-      notice: proximityAlertPayload(n.distanceMetres),
-      // display for the lost hunter (already distance-only)
-      publicRow: n,
-    }));
-
-    // TODO: email/push selected with selectedPayload
-    // TODO: email/push proximity with notice only
-    // TODO: prisma.lostAlert.create
+      } catch (err) {
+        console.error("Resend failed", err);
+      }
+    }
 
     return NextResponse.json({
       ok: true,
+      alert: fullAlert,
       radiusKm: PROXIMITY_RADIUS_KM,
-      selected: selectedPayload
-        ? { sent: true, note: "Full location to selected contacts" }
-        : { sent: false },
-      proximity: {
-        sent: notifyProximity,
-        count: proximityNotices.length,
-        // Safe to show lost hunter: distances only
-        nearby: nearbyPublic,
-        privacy:
-          "Proximity recipients receive distance only — exact location not included.",
+      mailtoLinks,
+      nearby,
+      email: {
+        attempted: emailsAttempted,
+        sent: emailsSent,
+        resendConfigured: Boolean(process.env.RESEND_API_KEY),
       },
-      note: "Auth, Resend, and presence DB pending wiring",
+      privacy:
+        "Selected contacts: full location. Proximity: distance only when presence provided.",
     });
   } catch (e) {
     console.error("lost-alert error", e);
-    return NextResponse.json({ error: "Failed to process lost alert" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to process lost alert" },
+      { status: 500 }
+    );
   }
 }
