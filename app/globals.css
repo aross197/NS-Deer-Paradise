@@ -9,7 +9,7 @@
   --amber: #e8a317;
   --amber-soft: #f5d078;
   --moss: #3d6b4f;
-  --moss-bright: #6bb co 82;
+  --moss-bright: #6bbf82;
   --cream: #f6f1e8;
   --glow-amber: 0 0 48px rgba(232, 163, 23, 0.28);
   --safe-top: env(safe-area-inset-top, 0px);
@@ -33,7 +33,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Cinematic film grain */
 body::before {
   content: "";
   position: fixed;
@@ -215,15 +214,6 @@ body::before {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
   }
 }
 
