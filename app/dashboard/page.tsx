@@ -9,17 +9,27 @@ export default function DashboardPage() {
       <nav className="sticky top-0 z-10 border-b border-white/[0.04] glass-strong">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/dashboard" className="font-serif text-lg tracking-wide text-cream-100">
-            NS Deer Paradise
+            BuckTracks
           </Link>
-          <div className="flex items-center gap-5 text-sm text-cream-300/60">
-            <Link href="/dashboard" className="text-cream-100 font-medium">Dashboard</Link>
-            <Link href="/feed" className="hover:text-amber-300 transition">Feed</Link>
-            <Link href="/cams" className="hover:text-amber-300 transition">Trail Cams</Link>
-            <Link href="/safety" className="text-red-400/90 hover:text-red-300 font-medium transition">
-              I Am Lost
+          <div className="flex items-center gap-4 text-sm text-cream-300/60 overflow-x-auto">
+            <Link href="/dashboard" className="text-cream-100 font-medium shrink-0">
+              Dashboard
             </Link>
-            <span className="text-white/10">|</span>
-            <button className="text-cream-300/40 hover:text-cream-100 transition">Sign out</button>
+            <Link href="/feed" className="hover:text-amber-300 transition shrink-0">
+              Feed
+            </Link>
+            <Link href="/master-baiter" className="hover:text-amber-300 transition shrink-0">
+              Master Baiter
+            </Link>
+            <Link href="/cams" className="hover:text-amber-300 transition shrink-0">
+              Cams
+            </Link>
+            <Link
+              href="/sos"
+              className="text-red-400/90 hover:text-red-300 font-medium transition shrink-0"
+            >
+              SOS
+            </Link>
           </div>
         </div>
       </nav>
@@ -27,30 +37,45 @@ export default function DashboardPage() {
       <main className="max-w-6xl mx-auto px-6 py-12">
         <div className="mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-amber-400/60 mb-2">Command center</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-amber-400/60 mb-2">
+              Command center
+            </p>
             <h1 className="font-serif text-3xl md:text-4xl text-cream-50 tracking-tight mb-2">
               Welcome to Paradise
             </h1>
-            <p className="text-cream-300/50">
-              Your personal hub for northern Nova Scotia deer hunting.
-            </p>
+            <p className="text-cream-300/50">Northern Nova Scotia deer hunting hub.</p>
           </div>
           <Link
-            href="/safety"
+            href="/sos"
             className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-red-600/90 hover:bg-red-500 text-white text-sm font-semibold shadow-[0_0_24px_rgba(220,38,38,0.35)] transition shrink-0"
           >
-            I Am Lost
+            SOS / I Am Lost
           </Link>
         </div>
 
         <div className="grid md:grid-cols-3 gap-5 mb-14">
           <div className="card-premium p-6">
             <p className="text-xs uppercase tracking-wider text-cream-300/40 mb-2">Season status</p>
-            <p className={`text-2xl font-medium ${status.isOpen ? "text-moss-400" : "text-cream-200"}`}>
+            <p
+              className={`text-2xl font-medium ${
+                status.isOpen ? "text-moss-400" : "text-cream-200"
+              }`}
+            >
               {status.isOpen ? "OPEN" : "CLOSED"}
             </p>
             <p className="text-sm text-cream-300/40 mt-1">{status.message}</p>
           </div>
+
+          <Link
+            href="/master-baiter"
+            className="card-premium p-6 block border-amber-500/20 hover:border-amber-400/40 group"
+          >
+            <p className="text-xs uppercase tracking-wider text-amber-400/70 mb-2">Master Baiter</p>
+            <p className="text-xl font-medium text-cream-50 group-hover:text-amber-300 transition">
+              Top 10 baits & recipes
+            </p>
+            <p className="text-sm text-cream-300/40 mt-1">Worldwide draws to bring in the buck.</p>
+          </Link>
 
           <Link
             href="/feed"
@@ -60,22 +85,7 @@ export default function DashboardPage() {
             <p className="text-xl font-medium text-cream-50 group-hover:text-amber-300 transition">
               Post your kill · React
             </p>
-            <p className="text-sm text-cream-300/40 mt-1">
-              Mini Facebook for harvests, tips, and respect.
-            </p>
-          </Link>
-
-          <Link
-            href="/safety"
-            className="card-premium p-6 block border-red-500/25 hover:border-red-400/40 group"
-          >
-            <p className="text-xs uppercase tracking-wider text-red-400/80 mb-2">Safety</p>
-            <p className="text-xl font-medium text-cream-50 group-hover:text-red-300 transition">
-              I Am Lost
-            </p>
-            <p className="text-sm text-cream-300/40 mt-1">
-              Email GPS, back bearing & waypoints to get you home.
-            </p>
+            <p className="text-sm text-cream-300/40 mt-1">Harvests, tips, respect.</p>
           </Link>
         </div>
 
@@ -98,6 +108,12 @@ export default function DashboardPage() {
           <h2 className="text-xs uppercase tracking-widest text-cream-300/40 mb-4">Your tools</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link
+              href="/master-baiter"
+              className="p-4 rounded-xl border border-amber-500/30 bg-amber-400/5 text-amber-300 text-sm text-center hover:border-amber-400/50 transition"
+            >
+              Master Baiter ✓
+            </Link>
+            <Link
               href="/feed"
               className="p-4 rounded-xl border border-amber-500/30 bg-amber-400/5 text-amber-300 text-sm text-center hover:border-amber-400/50 transition"
             >
@@ -107,22 +123,14 @@ export default function DashboardPage() {
               href="/cams"
               className="p-4 rounded-xl border border-amber-500/30 bg-amber-400/5 text-amber-300 text-sm text-center hover:border-amber-400/50 transition"
             >
-              Trail Cam Reader ✓
+              Trail Cams ✓
             </Link>
             <Link
-              href="/safety"
+              href="/sos"
               className="p-4 rounded-xl border border-red-500/30 bg-red-500/5 text-red-300 text-sm text-center hover:border-red-400/50 transition"
             >
-              I Am Lost ✓
+              SOS ✓
             </Link>
-            {["Hunt Journal", "Maps", "Weather"].map((item) => (
-              <div
-                key={item}
-                className="p-4 rounded-xl border border-dashed border-white/[0.06] text-cream-300/30 text-sm text-center"
-              >
-                {item}
-              </div>
-            ))}
           </div>
         </section>
       </main>
