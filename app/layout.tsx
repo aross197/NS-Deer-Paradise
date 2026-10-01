@@ -17,18 +17,27 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "BuckTracks | Northern Nova Scotia Deer Hunting",
+  title: {
+    default: "BuckTracks — Free hunting platform for northern Nova Scotia",
+    template: "%s · BuckTracks",
+  },
   description:
-    "Mobile-first hunting platform: seasons, trail cams, crew feed, and SOS / I Am Lost safety with GPS and back bearing.",
+    "The free deer hunting command center: 3D land 200 m around you, trail cam AI, live weather, SOS, seasons, and crew feed. Built for northern Nova Scotia. No paywall.",
   applicationName: "BuckTracks",
+  keywords: [
+    "deer hunting",
+    "Nova Scotia",
+    "trail camera",
+    "free hunting app",
+    "SOS",
+    "BuckTracks",
+  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "BuckTracks",
   },
-  formatDetection: {
-    telephone: true,
-  },
+  formatDetection: { telephone: true },
   manifest: "/manifest.webmanifest",
 };
 
@@ -38,8 +47,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#07090a" },
-    { media: "(prefers-color-scheme: light)", color: "#07090a" },
+    { media: "(prefers-color-scheme: dark)", color: "#050708" },
+    { media: "(prefers-color-scheme: light)", color: "#050708" },
   ],
 };
 
@@ -50,7 +59,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${instrumentSerif.variable}`}>
-      <body className="font-sans bg-[#07090a] text-[#f4efe6] antialiased pb-safe">
+      <body className="font-sans bg-[#050708] text-[#f6f1e8] antialiased pb-safe">
         {children}
         <SosFab />
       </body>
