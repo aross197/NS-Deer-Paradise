@@ -1,0 +1,41 @@
+{
+  "name": "BuckTracks",
+  "short_name": "BuckTracks",
+  "description": "Northern Nova Scotia deer hunting — seasons, cams, feed, SOS",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#07090a",
+  "theme_color": "#07090a",
+  "categories": ["sports", "navigation", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "SOS — I Am Lost",
+      "short_name": "SOS",
+      "description": "Share GPS and back bearing with emergency contacts",
+      "url": "/sos",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Crew Feed",
+      "short_name": "Feed",
+      "url": "/feed",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
