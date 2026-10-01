@@ -77,7 +77,7 @@ export const MASTER_BAITS_TOP_10: MasterBait[] = [
     why: "Language bucks already speak. Combines visual sign, scent, and territorial curiosity — often better than pure food bait.",
     how: "Clear a scrape under an overhanging licking branch. Add pre/post-rut scrape scent or herd scent. Refresh weekly.",
     season: "Early season through rut",
-    legalNote: "Generally scent-based; still check if ‘placing attractants’ is restricted.",
+    legalNote: "Generally scent-based; still check if placing attractants is restricted.",
   },
   {
     rank: 6,
@@ -106,8 +106,8 @@ export const MASTER_BAITS_TOP_10: MasterBait[] = [
     season: "Where baiting is allowed",
     recipe: [
       "1 cup blackstrap molasses",
-      "¼ cup corn oil",
-      "¼ cup trace mineral salt",
+      "1/4 cup corn oil",
+      "1/4 cup trace mineral salt",
       "2 Tbsp pure vanilla extract",
       "Stir to thick pourable syrup; use sparingly",
     ],
@@ -118,12 +118,43 @@ export const MASTER_BAITS_TOP_10: MasterBait[] = [
     name: "Apple / fruit-based attractants",
     category: "food",
     region: "Orchard country & commercial apple scents worldwide",
-    why: "Apples are a known preferred browse/scent. Works as liquid, powder, or fresh orchard drop where legal.",
+    why: "Apples are a known preferred browse and scent. Works as liquid, powder, or orchard drop where legal.",
     how: "Commercial apple powders/liquids, or fallen orchard fruit only if lawful. Pair with a camera.",
     season: "Fall food phase",
-    legalNote: "Fruit piles can be illegal bait. Municipal ‘no deer feeding’ bylaws may apply even off the hunt.",
+    legalNote: "Fruit piles can be illegal bait. Municipal no-deer-feeding bylaws may apply.",
   },
   {
     rank: 9,
     name: "Peanut butter / brown sugar block (DIY)",
- dual: 
+    category: "diy",
+    region: "Budget DIY (private land where legal)",
+    why: "Intense smell and salt/sugar draw. Sticky blocks hold scent in wet weather.",
+    how: "Warm gently, pour into a mold or onto a stump.",
+    season: "Where baiting is legal only",
+    recipe: [
+      "1 large jar peanut butter (~1 kg)",
+      "1 kg brown sugar",
+      "1 cup stock salt",
+      "Warm and stir; splash of water to syrup; set in a mold",
+    ],
+    legalNote: "Food bait — high legal risk in regulated provinces.",
+  },
+  {
+    rank: 10,
+    name: "Food plots & natural browse (clover, brassicas, soft mast)",
+    category: "food",
+    region: "Global habitat management gold standard",
+    why: "The real #1 long-term: grow what bucks want. Beats any bottle when you can plant or protect browse.",
+    how: "Small clearings, clover strips, brassicas, or protect soft mast. Hunt the travel corridors — not the plot center every sit.",
+    season: "Plant spring/summer; hunt fall patterns",
+    legalNote: "Crops for agriculture are usually fine; dumping feed as bait is a different legal question. Check NS rules.",
+  },
+];
+
+export const CATEGORY_LABEL: Record<BaitCategory, string> = {
+  mineral: "Mineral",
+  food: "Food / bait",
+  scent: "Scent",
+  scrape: "Scrape system",
+  diy: "DIY recipe",
+};
