@@ -10,7 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Auth.js / NextAuth models
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -30,6 +29,9 @@ model User {
   camJobs            TrailCamJob[]
   emergencyContacts  EmergencyContact[]
   lostAlerts         LostAlert[]
+  feedPosts          FeedPost[]
+  reactions          Reaction[]
+  comments           Comment[]
 
   @@map("users")
 }
@@ -168,11 +170,11 @@ model Waypoint {
   id          String   @id @default(cuid())
   userId      String
   name        String
-  type        String   // stand, cam, scrape, food, parking, truck, home, etc.
+  type        String
   latitude    Float
   longitude   Float
   notes       String?
-  isHomeBase  Boolean  @default(false) // primary "get me home" point (truck / camp / road)
+  isHomeBase  Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -180,15 +182,13 @@ model Waypoint {
   @@map("waypoints")
 }
 
-// ===== I AM LOST SAFETY =====
-
 model EmergencyContact {
   id        String   @id @default(cuid())
   userId    String
   name      String
   email     String
   phone     String?
-  relation  String?  // spouse, buddy, parent, etc.
+  relation  String?
   isPrimary Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -203,22 +203,78 @@ model LostAlert {
   latitude        Float
   longitude       Float
   accuracyMetres  Float?
-  backBearingDeg  Float?   // heading toward home base
-  backBearingLabel String? // e.g. "247.3° WSW"
+  backBearingDeg  Float?
+  backBearingLabel String?
   distanceToHomeM Float?
   homeWaypointId  String?
   homeWaypointName String?
-  waypointsJson   String?  @db.Text // snapshot of all waypoints at alert time
+  waypointsJson   String?  @db.Text
   mapsUrl         String?
   message         String?  @db.Text
-  emailsSentTo    String[] // list of addresses notified
-  status          String   @default("sent") // sent, acknowledged, resolved
+  emailsSentTo    String[]
+  status          String   @default("sent")
   createdAt       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@map("lost_alerts")
+}
+
+// ===== MINI FACEBOOK-STYLE FEED (kills / harvests) =====
+
+model FeedPost {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   @default("harvest") // harvest, photo, text, tip
+  body        String?  @db.Text
+  photoUrls   String[] // kill / field photos
+  // Harvest details (optional structured fields)
+  species     String?  // deer, bear, etc.
+  isBuck      Boolean?
+  antlerPoints Int?
+  weapon      String?  // bow, muzzleloader, rifle
+  zone        String?  // DMZ e.g. 105
+  harvestDate DateTime?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+  comments  Comment[]
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("feed_posts")
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  type      String   // like, fire, horns, respect, bow
+  createdAt DateTime @default(now())
+
+  post FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId]) // one reaction per user per post (can change type)
+  @@map("reactions")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  post FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@map("comments")
 }
 
 model Group {
