@@ -6,6 +6,11 @@ import {
   distanceMetres,
   mapsLink,
 } from "@/lib/geo";
+import {
+  PROXIMITY_RADIUS_KM,
+  proximityAlertPayload,
+  toPublicNearby,
+} from "@/lib/proximity";
 
 /**
  * POST /api/safety/lost-alert
@@ -13,17 +18,27 @@ import {
  * Body:
  * {
  *   latitude, longitude, accuracyMetres?,
- *   message?,
- *   // when auth is live, userId comes from session
+ *   notifySelected?: boolean,
+ *   notifyProximity?: boolean,
+ *   contactIds?: string[],
+ *   message?:
  * }
  *
- * Loads user's home-base waypoint + all waypoints + emergency contacts,
- * computes back bearing, emails contacts via Resend, stores LostAlert.
+ * Selected contacts → full location + bearing + waypoints.
+ * Proximity (opted-in, ≤25 km) → distance only, no exact coords.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { latitude, longitude, accuracyMetres, message } = body;
+    const {
+      latitude,
+      longitude,
+      accuracyMetres,
+      message,
+      notifySelected = true,
+      notifyProximity = true,
+      contactIds = [],
+    } = body;
 
     if (
       typeof latitude !== "number" ||
@@ -37,11 +52,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // TODO: require session — const session = await auth();
-    // TODO: load user waypoints where isHomeBase === true
-    // TODO: load EmergencyContact emails
+    if (!notifySelected && !notifyProximity) {
+      return NextResponse.json(
+        { error: "Choose selected contacts and/or proximity notify" },
+        { status: 400 }
+      );
+    }
 
-    // Placeholder home until DB is wired (northern NS example)
+    // TODO: session auth
     const home = { lat: 45.62, lon: -63.28, name: "Home base (truck/road)" };
     const here = { lat: latitude, lon: longitude };
 
@@ -49,31 +67,59 @@ export async function POST(req: NextRequest) {
     const dist = distanceMetres(here, home);
     const mapsUrl = mapsLink(latitude, longitude);
 
-    const alertPayload = {
-      latitude,
-      longitude,
-      accuracyMetres: accuracyMetres ?? null,
-      backBearingDeg: bearing,
-      backBearingLabel: formatBearing(bearing),
-      distanceToHomeM: dist,
-      distanceLabel: formatDistance(dist),
-      homeWaypointName: home.name,
-      mapsUrl,
-      message: message ?? null,
-      // waypointsJson: JSON.stringify(userWaypoints),
-      // emailsSentTo: contactEmails,
-    };
+    // --- Selected contacts: FULL location (email via Resend when wired) ---
+    const selectedPayload = notifySelected
+      ? {
+          latitude,
+          longitude,
+          accuracyMetres: accuracyMetres ?? null,
+          backBearingDeg: bearing,
+          backBearingLabel: formatBearing(bearing),
+          distanceToHomeM: dist,
+          distanceLabel: formatDistance(dist),
+          homeWaypointName: home.name,
+          mapsUrl,
+          message: message ?? null,
+          contactIds,
+        }
+      : null;
 
-    // TODO: await resend.emails.send({ ... }) to each emergency contact
-    // Subject: "[NS Deer Paradise] LOST ALERT — {user name}"
-    // Body: location, maps link, back bearing to walk home, distance, waypoint list
+    // --- Proximity: load opted-in presences server-side, never return their coords ---
+    // TODO: prisma userPresence where proximityOptIn && updated recently
+    const presenceCandidates: { displayName: string; lat: number; lon: number }[] =
+      []; // filled from DB
 
-    // TODO: prisma.lostAlert.create({ data: ... })
+    const nearbyPublic = notifyProximity
+      ? toPublicNearby(here, presenceCandidates)
+      : [];
+
+    // Each nearby recipient gets distance-only payload (no lost-person lat/lon)
+    const proximityNotices = nearbyPublic.map((n) => ({
+      // recipientUserId: …
+      notice: proximityAlertPayload(n.distanceMetres),
+      // display for the lost hunter (already distance-only)
+      publicRow: n,
+    }));
+
+    // TODO: email/push selected with selectedPayload
+    // TODO: email/push proximity with notice only
+    // TODO: prisma.lostAlert.create
 
     return NextResponse.json({
       ok: true,
-      alert: alertPayload,
-      note: "Email + DB persistence pending Auth.js and Resend wiring",
+      radiusKm: PROXIMITY_RADIUS_KM,
+      selected: selectedPayload
+        ? { sent: true, note: "Full location to selected contacts" }
+        : { sent: false },
+      proximity: {
+        sent: notifyProximity,
+        count: proximityNotices.length,
+        // Safe to show lost hunter: distances only
+        nearby: nearbyPublic,
+        privacy:
+          "Proximity recipients receive distance only — exact location not included.",
+      },
+      note: "Auth, Resend, and presence DB pending wiring",
     });
   } catch (e) {
     console.error("lost-alert error", e);
