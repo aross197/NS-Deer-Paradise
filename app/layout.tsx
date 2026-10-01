@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { SosFab } from "@/components/SosFab";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -16,17 +17,29 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "NS Deer Paradise | The Ultimate Northern Nova Scotia Deer Hunting Platform",
+  title: "BuckTracks | Northern Nova Scotia Deer Hunting",
   description:
-    "World-class free platform for Nova Scotia deer hunters. Seasons, accurate trail cam reader, maps, journals, weather, community. Register and enter paradise.",
-  keywords: [
-    "Nova Scotia",
-    "deer hunting",
-    "whitetail",
-    "northern Nova Scotia",
-    "trail camera AI",
-    "Crown land",
-    "hunting journal",
+    "Mobile-first hunting platform: seasons, trail cams, crew feed, and SOS / I Am Lost safety with GPS and back bearing.",
+  applicationName: "BuckTracks",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BuckTracks",
+  },
+  formatDetection: {
+    telephone: true,
+  },
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#07090a" },
+    { media: "(prefers-color-scheme: light)", color: "#07090a" },
   ],
 };
 
@@ -37,8 +50,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${instrumentSerif.variable}`}>
-      <body className="font-sans bg-[#07090a] text-[#f4efe6] antialiased">
+      <body className="font-sans bg-[#07090a] text-[#f4efe6] antialiased pb-safe">
         {children}
+        <SosFab />
       </body>
     </html>
   );
