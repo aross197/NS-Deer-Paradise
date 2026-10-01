@@ -10,43 +10,36 @@ Register for a free account → get a confirmation email → log into paradise.
 
 This is the all-in-one platform for white-tailed deer hunters in Nova Scotia (especially the north). No more jumping between apps, PDFs, Facebook groups, and weather sites. One place that does **everything**.
 
-### Core Features (Planned & In Progress)
+### Cool Core Features
+
+- **Mass Dump Trail Cam Photo Reader (Accurate)**  
+  Dump an entire SD card. We extract real EXIF timestamps, run high-quality animal detection (MegaDetector-class), auto-filter empty frames, tag deer / bucks / does with confidence scores, and give you a clean filterable gallery. Human overrides always win. See [`/cams`](app/cams/page.tsx) and [docs/TRAIL_CAM_ACCURATE_READER.md](docs/TRAIL_CAM_ACCURATE_READER.md).
 
 - **Free Account + Email Confirmation**  
-  Secure registration, confirmation email, instant login to your personalized dashboard.
+  Secure registration → confirmation email → logged into paradise.
 
 - **Nova Scotia Deer Season Hub**  
-  Live 2026–2027 dates, zones (101–112), antlerless draws, bag limits, youth seasons, Sunday hunting rules, official links.
+  Live 2026–2027 dates, zones 101–112, antlerless draws, bag limits, youth & Sunday rules.
 
 - **Interactive Maps**  
-  Crown land (official NS open data), public access, waypoints, stand locations, trail camera pins, wind tools.
+  Official NS Crown land open data, waypoints, stands, cam pins.
 
-- **Hunt Journal & Logbook**  
-  Log every hunt: weather, moon phase, wind, sightings, harvests, photos, GPS tracks.
-
-- **Trail Camera Gallery**  
-  Upload, tag, and organize cam pics. Share with trusted friends or keep private.
-
-- **Weather + Solunar + Activity Forecast**  
-  Hyper-local northern NS weather (Open-Meteo + MSC), barometric pressure, solunar tables, simple deer activity score.
-
-- **Community & Club**  
-  Private groups for your hunting buddies, tips, gear swaps, mentorship for youth hunters.
-
-- **Gear, Venison Kitchen, Trophy Room, Safety Checker**
+- **Hunt Journal, Weather + Solunar, Community, Gear, Venison Kitchen, Trophy Room**
 
 ## Tech Stack
 
-- Next.js 15 (App Router) + TypeScript + Tailwind CSS
+- Next.js 15 + TypeScript + Tailwind
 - Auth.js + Prisma + PostgreSQL
-- Resend for transactional email
-- Leaflet / react-leaflet + NS Crown Land GeoJSON / ArcGIS layers
-- Open-Meteo, solunar.org, sunrisesunset.io for weather & celestial data
+- Resend for email
+- Leaflet + NS Crown Land layers
+- Open-Meteo / MSC / solunar / sunrisesunset for weather & celestial data
+- Trail cam pipeline designed around MegaDetector-class accuracy
 
 ## Docs
 
-- [AUTH_AND_EMAIL.md](docs/AUTH_AND_EMAIL.md) — registration + confirmation flow
-- [APIS_AND_DATA_SOURCES.md](docs/APIS_AND_DATA_SOURCES.md) — free weather, solunar, moon, Crown land, and mapping sources researched for this project
+- [TRAIL_CAM_ACCURATE_READER.md](docs/TRAIL_CAM_ACCURATE_READER.md) — mass dump + accurate detection architecture
+- [AUTH_AND_EMAIL.md](docs/AUTH_AND_EMAIL.md)
+- [APIS_AND_DATA_SOURCES.md](docs/APIS_AND_DATA_SOURCES.md)
 
 ## Getting Started
 
@@ -59,20 +52,19 @@ npx prisma generate && npx prisma db push
 npm run dev
 ```
 
-## Current Roadmap Status
+## Roadmap Status
 
-1. ✅ Repo + vision + basic structure + landing / register / login / dashboard
-2. ✅ 2026–2027 NS deer season data + helpers
-3. ✅ Research of free APIs & official NS Crown land open data
-4. ⏳ Auth system with real email confirmation (next priority)
-5. Hunt journal MVP
-6. Weather + solunar components
-7. Maps with Crown land overlay
-8. Photo uploads, community, polish, PWA
+1. ✅ Repo + landing / register / login / dashboard
+2. ✅ 2026–2027 NS deer season data
+3. ✅ Free APIs & Crown land research
+4. ✅ **Mass Dump Trail Cam Reader** (UI + schema + accuracy design)
+5. ⏳ Real Auth.js + email confirmation
+6. Wire actual detection worker (MegaDetector / vision pipeline)
+7. Hunt journal, maps, weather widgets, polish
 
 ## Legal & Safety
 
-Always follow current Nova Scotia Department of Natural Resources regulations. This site is a helper tool — not a substitute for the official summary or your hunter education certificate. Hunt safe, hunt ethical, respect landowners and wildlife.
+Always follow current Nova Scotia DNR regulations. This is a helper tool, not a substitute for the official summary or hunter education. Hunt safe, hunt ethical.
 
 ---
 
