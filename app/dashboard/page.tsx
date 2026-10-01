@@ -13,11 +13,11 @@ export default function DashboardPage() {
           </Link>
           <div className="flex items-center gap-5 text-sm text-cream-300/60">
             <Link href="/dashboard" className="text-cream-100 font-medium">Dashboard</Link>
+            <Link href="/feed" className="hover:text-amber-300 transition">Feed</Link>
             <Link href="/cams" className="hover:text-amber-300 transition">Trail Cams</Link>
             <Link href="/safety" className="text-red-400/90 hover:text-red-300 font-medium transition">
               I Am Lost
             </Link>
-            <Link href="#" className="hover:text-cream-100 transition">Maps</Link>
             <span className="text-white/10">|</span>
             <button className="text-cream-300/40 hover:text-cream-100 transition">Sign out</button>
           </div>
@@ -53,15 +53,15 @@ export default function DashboardPage() {
           </div>
 
           <Link
-            href="/cams"
+            href="/feed"
             className="card-premium p-6 block border-amber-500/20 hover:border-amber-400/40 group"
           >
-            <p className="text-xs uppercase tracking-wider text-amber-400/70 mb-2">Trail cam reader</p>
+            <p className="text-xs uppercase tracking-wider text-amber-400/70 mb-2">Crew feed</p>
             <p className="text-xl font-medium text-cream-50 group-hover:text-amber-300 transition">
-              Mass Dump → Accurate Read
+              Post your kill · React
             </p>
             <p className="text-sm text-cream-300/40 mt-1">
-              Dump the SD card. Filter empties. See the deer.
+              Mini Facebook for harvests, tips, and respect.
             </p>
           </Link>
 
@@ -98,6 +98,12 @@ export default function DashboardPage() {
           <h2 className="text-xs uppercase tracking-widest text-cream-300/40 mb-4">Your tools</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Link
+              href="/feed"
+              className="p-4 rounded-xl border border-amber-500/30 bg-amber-400/5 text-amber-300 text-sm text-center hover:border-amber-400/50 transition"
+            >
+              Crew Feed ✓
+            </Link>
+            <Link
               href="/cams"
               className="p-4 rounded-xl border border-amber-500/30 bg-amber-400/5 text-amber-300 text-sm text-center hover:border-amber-400/50 transition"
             >
@@ -109,16 +115,14 @@ export default function DashboardPage() {
             >
               I Am Lost ✓
             </Link>
-            {["Hunt Journal", "Interactive Maps", "Weather + Solunar", "Crew Groups"].map(
-              (item) => (
-                <div
-                  key={item}
-                  className="p-4 rounded-xl border border-dashed border-white/[0.06] text-cream-300/30 text-sm text-center"
-                >
-                  {item}
-                </div>
-              )
-            )}
+            {["Hunt Journal", "Maps", "Weather"].map((item) => (
+              <div
+                key={item}
+                className="p-4 rounded-xl border border-dashed border-white/[0.06] text-cream-300/30 text-sm text-center"
+              >
+                {item}
+              </div>
+            ))}
           </div>
         </section>
       </main>
