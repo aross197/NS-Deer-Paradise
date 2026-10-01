@@ -16,11 +16,14 @@ export default function DashboardPage() {
             <Link href="/weather" className="hover:text-sky-300 shrink-0">
               Weather
             </Link>
+            <Link href="/land-3d" className="hover:text-amber-300 shrink-0">
+              Land 3D
+            </Link>
+            <Link href="/cams" className="hover:text-amber-300 shrink-0">
+              Cams
+            </Link>
             <Link href="/feed" className="hover:text-amber-300 shrink-0">
               Feed
-            </Link>
-            <Link href="/master-baiter" className="hover:text-amber-300 shrink-0">
-              Baits
             </Link>
             <Link href="/sos" className="text-red-400 shrink-0">
               SOS
@@ -37,7 +40,7 @@ export default function DashboardPage() {
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-amber-400/60 mb-2">Command center</p>
             <h1 className="font-serif text-3xl text-cream-50 tracking-tight">BuckTracks</h1>
-            <p className="text-cream-300/50 text-sm">Northern Nova Scotia · live data</p>
+            <p className="text-cream-300/50 text-sm">Northern Nova Scotia · live data · 3D land</p>
           </div>
           <Link
             href="/sos"
@@ -56,10 +59,10 @@ export default function DashboardPage() {
             <p className="text-sm text-cream-300/40 mt-1">{status.message}</p>
           </div>
           <WeatherCard />
-          <Link href="/master-baiter" className="card-premium p-6 block border-amber-500/20">
-            <p className="text-xs uppercase tracking-wider text-amber-400/70 mb-2">Master Baiter</p>
-            <p className="text-xl text-cream-50">Top 10 baits</p>
-            <p className="text-sm text-cream-300/40 mt-1">Recipes & systems</p>
+          <Link href="/land-3d" className="card-premium p-6 block border-amber-500/25">
+            <p className="text-xs uppercase tracking-wider text-amber-400/70 mb-2">Land 360°</p>
+            <p className="text-xl text-cream-50">3D terrain · north</p>
+            <p className="text-sm text-cream-300/40 mt-1">Satellite + real elevation from your GPS</p>
           </Link>
         </div>
 
@@ -77,12 +80,14 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
+            ["/land-3d", "Land 3D 360°"],
             ["/weather", "Live weather"],
+            ["/cams", "Trail cam AI"],
+            ["/master-baiter", "Master Baiter"],
             ["/feed", "Crew feed"],
-            ["/cams", "Trail cams"],
-            ["/settings", "Settings / contacts"],
+            ["/settings", "Settings"],
           ].map(([href, label]) => (
             <Link
               key={href}
