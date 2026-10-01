@@ -13,8 +13,12 @@ import {
   buildHeightGrid,
   scoreBedding,
   NS_PRESETS,
+  loadDemTile,
+  lngLatToWorld,
+  terrariumHeight,
   type BedCandidate,
 } from "@/lib/dem";
+import { formatCoords, getPrecisionGps } from "@/lib/geo";
 
 const BASEMAPS: Record<
   string,
@@ -49,36 +53,76 @@ interface Props {
   className?: string;
 }
 
-function ensureRadiusLayer(map: Map, lon: number, lat: number) {
+function setCircleSource(
+  map: Map,
+  id: string,
+  lon: number,
+  lat: number,
+  radiusM: number,
+  lineColor: string,
+  fillColor: string,
+  fillOpacity: number
+) {
   const geo = {
     type: "FeatureCollection" as const,
-    features: [circlePolygon(lon, lat, STANDING_VIEW.radiusMetres)],
+    features: [circlePolygon(lon, lat, radiusM)],
   };
-  if (map.getSource("radius-200")) {
-    (map.getSource("radius-200") as maplibregl.GeoJSONSource).setData(geo);
+  if (map.getSource(id)) {
+    (map.getSource(id) as maplibregl.GeoJSONSource).setData(geo);
     return;
   }
-  map.addSource("radius-200", { type: "geojson", data: geo });
+  map.addSource(id, { type: "geojson", data: geo });
   map.addLayer({
-    id: "radius-200-fill",
+    id: `${id}-fill`,
     type: "fill",
-    source: "radius-200",
-    paint: {
-      "fill-color": "#e8a317",
-      "fill-opacity": 0.07,
-    },
+    source: id,
+    paint: { "fill-color": fillColor, "fill-opacity": fillOpacity },
   });
   map.addLayer({
-    id: "radius-200-line",
+    id: `${id}-line`,
     type: "line",
-    source: "radius-200",
+    source: id,
     paint: {
-      "line-color": "#e8a317",
-      "line-width": 2,
-      "line-opacity": 0.85,
-      "line-dasharray": [2, 1.5],
+      "line-color": lineColor,
+      "line-width": id === "gps-accuracy" ? 1.5 : 2,
+      "line-opacity": 0.9,
+      "line-dasharray": id === "gps-accuracy" ? [1, 1] : [2, 1.5],
     },
   });
+}
+
+function ensureRadiusLayer(map: Map, lon: number, lat: number) {
+  setCircleSource(
+    map,
+    "radius-200",
+    lon,
+    lat,
+    STANDING_VIEW.radiusMetres,
+    "#e8a317",
+    "#e8a317",
+    0.07
+  );
+}
+
+function ensureAccuracyLayer(map: Map, lon: number, lat: number, accuracyM: number) {
+  if (!Number.isFinite(accuracyM) || accuracyM <= 0) return;
+  setCircleSource(map, "gps-accuracy", lon, lat, accuracyM, "#38bdf8", "#38bdf8", 0.12);
+}
+
+async function sampleElevM(lon: number, lat: number): Promise<number | null> {
+  try {
+    const z = 14;
+    const w = lngLatToWorld(lon, lat, z);
+    const tile = await loadDemTile(z, Math.floor(w.x), Math.floor(w.y));
+    const fx = w.x - Math.floor(w.x);
+    const fy = w.y - Math.floor(w.y);
+    const px = Math.min(tile.size - 1, Math.max(0, Math.floor(fx * tile.size)));
+    const py = Math.min(tile.size - 1, Math.max(0, Math.floor(fy * tile.size)));
+    const i = (py * tile.size + px) * 4;
+    return terrariumHeight(tile.data[i], tile.data[i + 1], tile.data[i + 2]);
+  } catch {
+    return null;
+  }
 }
 
 export function Land3DViewer({ className = "" }: Props) {
@@ -90,12 +134,14 @@ export function Land3DViewer({ className = "" }: Props) {
     lat: NS_LAND_DEFAULT.lat,
     lon: NS_LAND_DEFAULT.lon,
   });
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [elevM, setElevM] = useState<number | null>(null);
   const [bearing, setBearing] = useState(0);
   const [pitch, setPitch] = useState(STANDING_VIEW.pitch);
   const [exaggeration, setExaggeration] = useState(STANDING_VIEW.exaggeration);
   const [basemap, setBasemap] = useState("imagery");
   const [status, setStatus] = useState(
-    `Standing view · ${STANDING_VIEW.radiusMetres} m around you · loading…`
+    `Precision standing view · ${STANDING_VIEW.radiusMetres} m · loading…`
   );
   const [search, setSearch] = useState("");
   const [gpsBusy, setGpsBusy] = useState(false);
@@ -114,7 +160,7 @@ export function Land3DViewer({ className = "" }: Props) {
     el.className = "bed-pin";
     el.innerHTML = `<span>${rank}</span>`;
     const popup = new Popup({ offset: 18 }).setHTML(
-      `<strong>Possible bed ${rank}</strong><br/>Score ${(spot.score * 100).toFixed(0)} / 100<br/>${spot.why}<br/><small>Terrain-only. No cover or pressure data.</small>`
+      `<strong>Possible bed ${rank}</strong><br/>Score ${(spot.score * 100).toFixed(0)} / 100<br/>${spot.why}<br/><small>Terrain-only. DEM ~12–30 m.</small>`
     );
     const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
       .setLngLat([spot.lng, spot.lat])
@@ -123,9 +169,8 @@ export function Land3DViewer({ className = "" }: Props) {
     bedMarkersRef.current.push(marker);
   }, []);
 
-  /** Camera as if you are there: ~200 m all around, looking out, north-aligned */
   const standingView = useCallback(
-    (lat: number, lon: number, keepNorth = true) => {
+    async (lat: number, lon: number, keepNorth = true, accuracyM?: number | null) => {
       const map = mapRef.current;
       if (!map) return;
       map.flyTo({
@@ -138,8 +183,17 @@ export function Land3DViewer({ className = "" }: Props) {
       });
       youMarkerRef.current?.setLngLat([lon, lat]);
       setCoords({ lat, lon });
-      if (map.isStyleLoaded()) ensureRadiusLayer(map, lon, lat);
-      else map.once("load", () => ensureRadiusLayer(map, lon, lat));
+      if (accuracyM != null) setGpsAccuracy(accuracyM);
+      const apply = () => {
+        ensureRadiusLayer(map, lon, lat);
+        if (accuracyM != null && accuracyM > 0) {
+          ensureAccuracyLayer(map, lon, lat, accuracyM);
+        }
+      };
+      if (map.isStyleLoaded()) apply();
+      else map.once("load", apply);
+      const h = await sampleElevM(lon, lat);
+      setElevM(h);
     },
     []
   );
@@ -176,8 +230,9 @@ export function Land3DViewer({ className = "" }: Props) {
     map.on("load", () => {
       ensureRadiusLayer(map, NS_LAND_DEFAULT.lon, NS_LAND_DEFAULT.lat);
       setStatus(
-        `Standing view · gold ring = ${STANDING_VIEW.radiusMetres} m · drag to look 360° · 0° = north`
+        `Gold = ${STANDING_VIEW.radiusMetres} m · cyan = GPS accuracy · true north · DEM elev at pin`
       );
+      sampleElevM(NS_LAND_DEFAULT.lon, NS_LAND_DEFAULT.lat).then(setElevM);
     });
     map.on("rotate", () => setBearing(map.getBearing()));
     map.on("pitch", () => setPitch(map.getPitch()));
@@ -218,32 +273,29 @@ export function Land3DViewer({ className = "" }: Props) {
       map.once("style.load", () => {
         map.setTerrain({ source: "terrarium", exaggeration });
         ensureRadiusLayer(map, coords.lon, coords.lat);
+        if (gpsAccuracy) ensureAccuracyLayer(map, coords.lon, coords.lat, gpsAccuracy);
       });
     }
   };
 
-  const useGps = () => {
-    if (!navigator.geolocation) {
-      setStatus("GPS not available");
-      return;
-    }
+  const useGps = async () => {
     setGpsBusy(true);
-    setStatus("Getting GPS…");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        standingView(latitude, longitude, true);
-        setStatus(
-          `You are here · ${STANDING_VIEW.radiusMetres} m ring · north · GPS ±${Math.round(accuracy)} m`
-        );
-        setGpsBusy(false);
-      },
-      () => {
-        setStatus("GPS failed — enable location");
-        setGpsBusy(false);
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-    );
+    setStatus("High-accuracy GPS fix…");
+    try {
+      const fix = await getPrecisionGps(30000);
+      await standingView(fix.lat, fix.lon, true, fix.accuracyMetres);
+      const acc =
+        fix.accuracyMetres != null ? `±${fix.accuracyMetres.toFixed(1)} m` : "±?";
+      const alt =
+        fix.altitudeMetres != null ? ` · alt ${fix.altitudeMetres.toFixed(1)} m` : "";
+      setStatus(
+        `Precision fix ${formatCoords(fix.lat, fix.lon, 7)} · GPS ${acc}${alt} · true north`
+      );
+    } catch {
+      setStatus("GPS failed — open sky, enable high accuracy location");
+    } finally {
+      setGpsBusy(false);
+    }
   };
 
   const runSearch = async (e: React.FormEvent) => {
@@ -261,9 +313,9 @@ export function Land3DViewer({ className = "" }: Props) {
         return;
       }
       const r = rows[0];
-      standingView(Number(r.lat), Number(r.lon), true);
+      await standingView(Number(r.lat), Number(r.lon), true, null);
       setStatus(
-        `${r.display_name?.split(",").slice(0, 2).join(",") ?? "Found"} · ${STANDING_VIEW.radiusMetres} m view`
+        `${r.display_name?.split(",").slice(0, 2).join(",") ?? "Found"} · ${formatCoords(Number(r.lat), Number(r.lon), 6)}`
       );
     } catch {
       setStatus("Search failed");
@@ -274,10 +326,10 @@ export function Land3DViewer({ className = "" }: Props) {
     const map = mapRef.current;
     if (!map) return;
     setBedsBusy(true);
-    setBedNote("Reading slopes in view…");
+    setBedNote("Sampling DEM at max local zoom…");
     try {
       const b = map.getBounds();
-      const z = Math.min(15, Math.max(12, Math.round(map.getZoom()) + 1));
+      const z = Math.min(15, Math.max(13, Math.round(map.getZoom()) + 1));
       const grid = await buildHeightGrid(
         {
           west: b.getWest(),
@@ -285,8 +337,8 @@ export function Land3DViewer({ className = "" }: Props) {
           south: b.getSouth(),
           north: b.getNorth(),
         },
-        64,
-        64,
+        80,
+        80,
         z
       );
       const spots = scoreBedding(grid);
@@ -294,8 +346,8 @@ export function Land3DViewer({ className = "" }: Props) {
       spots.forEach((s, i) => addBedPin(s, i + 1, map));
       setBedNote(
         spots.length
-          ? `${spots.length} terrain pins near you. Cover, wind, pressure still decide real beds.`
-          : "No strong terrain beds in this tight view."
+          ? `${spots.length} pins · DEM z${z} · terrain-only (not survey grade)`
+          : "No strong terrain beds in this view."
       );
     } catch (err) {
       setBedNote(err instanceof Error ? err.message : "Could not score beds");
@@ -334,8 +386,8 @@ export function Land3DViewer({ className = "" }: Props) {
               key={p.name}
               type="button"
               onClick={() => {
-                standingView(p.lat, p.lon, true);
-                setStatus(`${p.name} · ${STANDING_VIEW.radiusMetres} m around`);
+                standingView(p.lat, p.lon, true, null);
+                setStatus(`${p.name} · ${STANDING_VIEW.radiusMetres} m`);
               }}
               className="text-[11px] px-2.5 py-1.5 rounded-full border border-white/10 text-cream-300/60 hover:border-amber-500/40 hover:text-amber-300"
             >
@@ -360,11 +412,13 @@ export function Land3DViewer({ className = "" }: Props) {
               N
             </span>
             <div>
-              <p className="text-cream-50 font-medium">
-                Looking {(bearing % 360).toFixed(0)}°
+              <p className="text-cream-50 font-medium tabular-nums">
+                {(bearing % 360).toFixed(1)}° true
               </p>
-              <p className="text-cream-300/50">
-                {STANDING_VIEW.radiusMetres} m ring · pitch {pitch.toFixed(0)}°
+              <p className="text-cream-300/50 tabular-nums">
+                {STANDING_VIEW.radiusMetres} m
+                {gpsAccuracy != null ? ` · GPS ±${gpsAccuracy.toFixed(1)} m` : ""}
+                {elevM != null ? ` · ${elevM.toFixed(1)} m elev` : ""}
               </p>
             </div>
           </div>
@@ -372,7 +426,7 @@ export function Land3DViewer({ className = "" }: Props) {
       </div>
 
       <div className="absolute bottom-8 left-4 right-4 z-10 flex flex-col gap-2">
-        <p className="text-[11px] text-cream-100/80 bg-black/55 backdrop-blur px-3 py-2 rounded-xl max-w-xl">
+        <p className="text-[11px] text-cream-100/80 bg-black/55 backdrop-blur px-3 py-2 rounded-xl max-w-xl font-mono">
           {status}
         </p>
         <div className="flex flex-wrap gap-2 items-center">
@@ -382,14 +436,14 @@ export function Land3DViewer({ className = "" }: Props) {
             disabled={gpsBusy}
             className="btn-primary text-xs py-2 px-3 min-h-[40px] disabled:opacity-50"
           >
-            {gpsBusy ? "Locating…" : "Stand here (GPS)"}
+            {gpsBusy ? "Fixing…" : "Precision GPS"}
           </button>
           <button
             type="button"
-            onClick={() => standingView(coords.lat, coords.lon, true)}
+            onClick={() => standingView(coords.lat, coords.lon, true, gpsAccuracy)}
             className="btn-ghost text-xs py-2 px-3 min-h-[40px]"
           >
-            Reset 200 m view
+            Reset 200 m
           </button>
           <button
             type="button"
@@ -403,7 +457,7 @@ export function Land3DViewer({ className = "" }: Props) {
             onClick={spinLook}
             className="btn-ghost text-xs py-2 px-3 min-h-[40px]"
           >
-            Look right 90°
+            Look 90°
           </button>
           <button
             type="button"
@@ -423,33 +477,14 @@ export function Land3DViewer({ className = "" }: Props) {
             <option value="streets">Streets</option>
             <option value="opentopo">OpenTopo</option>
           </select>
-          <label className="text-[10px] text-cream-300/50 flex items-center gap-1">
-            Relief
-            <input
-              type="range"
-              min={1}
-              max={2}
-              step={0.05}
-              value={exaggeration}
-              onChange={(e) => setExaggeration(parseFloat(e.target.value))}
-              className="w-16 accent-amber-500"
-            />
-          </label>
         </div>
         <p className="text-[10px] text-cream-300/40">{bedNote}</p>
       </div>
 
-      <p className="mt-3 text-[10px] text-cream-300/30 text-center">
-        {coords.lat.toFixed(5)}, {coords.lon.toFixed(5)} · ~{STANDING_VIEW.radiusMetres} m around
-        you · DEM AWS Terrarium · inspired by{" "}
-        <a
-          href="https://glargod.github.io/terraview/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-amber-400/70 underline"
-        >
-          Terraview
-        </a>
+      <p className="mt-3 text-[10px] text-cream-300/30 text-center font-mono">
+        {formatCoords(coords.lat, coords.lon, 7)}
+        {elevM != null ? ` · DEM ${elevM.toFixed(1)} m` : ""} · Vincenty/WGS84 SOS · AWS
+        Terrarium
       </p>
 
       <style jsx global>{`
